@@ -1,172 +1,186 @@
 # AutoCut
 
-Công cụ cắt video và xuất bản Shorts 9:16. Backend Python (FastAPI + ffmpeg), giao diện web thuần (không cần build step).
+A video cutting and 9:16 Shorts publishing tool. Python backend (FastAPI + ffmpeg) with a plain web UI (no build step required).
 
-## Chạy
+## Run
 
 ```bash
 ./run.sh
 ```
 
-Mở <http://127.0.0.1:8787>.
+Then open <http://127.0.0.1:8787>. The UI is currently in Vietnamese; the button labels quoted below are shown with an English gloss.
 
-Cần Python 3.10+. ffmpeg được tự tìm theo thứ tự: `ffmpeg` trong PATH → `static-ffmpeg` (pip) → `imageio-ffmpeg` (pip). Nếu chưa có:
+Requires Python 3.10+. ffmpeg is discovered automatically in this order: `ffmpeg` on `PATH` → `static-ffmpeg` (pip) → `imageio-ffmpeg` (pip). If you don't have it yet:
 
 ```bash
 pip install -r requirements.txt
-# hoặc
+# or
 brew install ffmpeg
 ```
 
-## Quy trình 3 bước
+## The three-step workflow
 
-1. **Chọn video** — kéo thả file vào khung (nhiều file cùng lúc, có % tiến độ upload), bấm Upload, nhập đường dẫn từ máy, hoặc chọn trong thư viện. Tệp không phải video sẽ bị bỏ qua. Danh sách có poster thumbnail, độ dài, độ phân giải.
-2. **Cắt** — chọn điểm bắt đầu / kết thúc bằng slider, thanh timeline kéo-thả, hoặc nút "Đặt điểm" theo vị trí video đang phát. Phím `←` / `→` dịch khung hình 0.05s.
-3. **Fill 9:16 & Overlay** — chọn cách fill nền, thêm text/khung che/sticker, xem preview trực tiếp trên khung 9:16, rồi xuất MP4.
+1. **Pick a video** — drag and drop files onto the drop zone (multiple files at once, with upload progress percentage), click Upload, paste a local path, or choose from the library. Non-video files are skipped. The list shows a poster thumbnail, duration, and resolution.
+2. **Trim** — set the start / end points with sliders, the draggable timeline bar, or the "Đặt điểm bắt đầu / kết thúc" (set start / end) buttons at the current playback position. The `←` / `→` keys nudge by one frame (0.05s).
+3. **Fill 9:16 & Overlay** — choose a background fill mode, add text / cover boxes / stickers, preview live on the 9:16 canvas, then export MP4.
 
-## Tuỳ chọn fill nền 9:16
+## 9:16 background fill options
 
-| Chế độ | Kết quả |
+| Mode | Result |
 |---|---|
-| **Blur nền** | Video gốc giữ nguyên tỉ lệ ở giữa, phần nền thừa lấy từ chính frame đó làm blur (tuỳ chỉnh độ blur + zoom) |
-| **Màu** | Video gốc giữ tỉ lệ ở giữa, phần nền thừa lấp bằng màu tuỳ chỉnh |
-| **Crop xuyên** | Video phủ kín khung 9:16, cắt bỏ phần thừa ở hai bên |
+| **Blur nền** (blur background) | The source keeps its aspect ratio in the center; the surrounding area is a blurred copy of the same frame (adjustable blur + zoom) |
+| **Màu** (color) | The source keeps its aspect ratio in the center; the surrounding area is filled with a custom color |
+| **Crop xuyên** (crop through) | The video covers the full 9:16 frame, cropping the excess on both sides |
 
-### Nguồn
+### Source settings
 
-| Tuỳ chọn | Mặc định | Ghi chú |
+| Option | Default | Notes |
 |---|---|---|
-| **Lật ngang (flip)** | ✅ Bật | `hflip` trong ffmpeg — dùng khi nguồn video bị ghi ngược |
-| **Âm lượng** | 70% | Slider 0–200%, áp dụng qua filter `volume` |
-| **CRF** | 18 | Chỉ dùng khi bitrate = 0 |
-| **FPS** | Giữ nguyên nguồn | API `fps: 0` = theo nguồn, đặt số > 0 để ép |
-| **Tốc độ** | 1.02x | Thay đổi rất nhẹ (+2%). Phạm vi 0.5x–2x. Video dùng `setpts`, audio dùng `atempo` |
-| **Độ sáng** | +0.02 | Phạm vi ±0.30 qua `eq=brightness` |
-| **Nhiễu nhẹ** | 2 | Phạm vi 0–20, filter `noise=alls=N:allf=t+u` trên frame cuối (sau overlay). 0 = tắt |
-| **Độ nét** | 0.30 | 0–1, filter `cas` (Contrast Adaptive Sharpening) chỉ áp lên lớp video chính, trước overlay và nhiễu. Scale luôn dùng Lanczos. 0 = tắt cas |
-| **Bitrate video** | 4000 kbps | 0 = dùng CRF; >0 = `-b:v` (kèm `maxrate`/`bufsize`), tối đa 12000 kbps trên UI |
+| **Lật ngang** (horizontal flip) | ✅ On | `hflip` in ffmpeg — use when the source was recorded mirrored |
+| **Âm lượng** (volume) | 70% | 0–200% slider, applied via the `volume` filter |
+| **Độ nén (CRF)** (compression) | 18 | Only used when bitrate = 0 |
+| **FPS** (API only) | Keep source | `fps: 0` = follow source, set a value > 0 to force |
+| **Tốc độ** (speed) | 1.02x | Very slight change (+2%). Range 0.5x–2x. Video uses `setpts`, audio uses `atempo` |
+| **Độ sáng** (brightness) | +0.02 | Range ±0.30 via `eq=brightness` |
+| **Nhiễu nhẹ** (light grain) | 2 | Range 0–20, `noise=alls=N:allf=t+u` filter on the final frame (after overlay). 0 = off |
+| **Độ nét** (sharpness) | 0.30 | 0–1, `cas` filter (Contrast Adaptive Sharpening) applied only to the main video layer, before overlay and grain. Scaling always uses Lanczos. 0 = cas off |
+| **Bitrate video** | 4000 kbps | 0 = use CRF; > 0 = `-b:v` (with `maxrate`/`bufsize`), capped at 12000 kbps in the UI |
 
-### Crop vùng nguồn
+### Crop vùng nguồn (source crop)
 
-Chọn vùng cắt khỏi **video gốc** trước khi fill 9:16.
+Choose a region to cut from the **original video** before the 9:16 fill.
 
-- **4 slider** (X, Y, Rộng, Cao)
-- **Kéo góc** (`tl`/`tr`/`bl`/`br`) — đổi cả 2 chiều
-- **Kéo cạnh** (`t`/`b`/`l`/`r`) — chỉ đổi 1 chiều, giữ nguyên cạnh đối diện
+- **4 sliders** (X, Y, Rộng / width, Cao / height)
+- **Drag corners** (`tl`/`tr`/`bl`/`br`) — changes both dimensions
+- **Drag edges** (`t`/`b`/`l`/`r`) — changes one dimension, keeping the opposite edge fixed
+- **Đặt lại crop** (reset crop) restores the full frame
 
-Vùng crop dùng toạ độ chuẩn hoá 0..1 nên áp dụng đúng cho mọi kích thước xuất.
+The crop region uses normalized 0..1 coordinates, so it applies correctly at any output size.
 
-Thứ tự xử lý trong ffmpeg: **crop → flip → độ sáng → tốc độ → fill 9:16 → overlay → nhiễu**. Output luôn được re-encode libx264. Preview trên web mô phỏng đúng thứ tự này.
+Processing order in ffmpeg: **crop → flip → brightness → speed → 9:16 fill → overlay → grain**. Output is always re-encoded with libx264. The web preview mirrors this exact order.
 
-## Tiến độ xuất video
+## Export progress
 
-Khi bấm **Xuất video**, hiện overlay toàn màn hình với:
-- Vòng tròn SVG tiến độ + số phần trăm
-- Thanh tiến độ ngang
-- Trạng thái và **thời gian còn lại ước tính** (ETA) — ví dụ `Đang xuất 42% · còn ~3s`
-- Khi xong: vòng tròn chuyển xanh, nút **Tải video**
-- Khi lỗi: vòng tròn chuyển đỏ, hiện thông báo lỗi ffmpeg
+Clicking **Xuất video** (export video) shows a full-screen overlay with:
 
-Backend đọc tiến độ từ `-progress pipe:1` của ffmpeg và tính ETA từ thời gian đã trôi qua.
+- An SVG progress ring plus the percentage
+- A horizontal progress bar
+- Status and an **estimated time remaining** (ETA) — e.g. `Đang xuất 42% · còn ~3s` ("exporting 42% · ~3s left")
+- On success: the ring turns green and a **Tải video** (download video) button appears
+- On failure: the ring turns red and the ffmpeg error message is shown
+
+The backend reads progress from ffmpeg's `-progress pipe:1` and derives the ETA from elapsed time.
 
 ## Overlay
 
-- **Chữ**: nội dung, font (Arial, Arial Black, Impact, Verdana, Helvetica, Georgia, Times, Courier), màu, cỡ (% chiều cao khung), đậm, độ đục. Kéo trực tiếp trên khung preview để định vị.
-- **Khung che**: hình chữ nhật đục để che logo/watermark — màu, độ đục, vị trí, kích thước.
-- **Sticker**: xem mục [Sticker](#sticker) bên dưới.
+- **Chữ** (text): content, font (Arial, Arial Black, Impact, Verdana, Helvetica, Georgia, Times, Courier), color, size (% of frame height), bold, opacity, rotation. Drag directly on the preview canvas to position it.
+- **Khung che** (cover box): an opaque rectangle to hide logos/watermarks — color, opacity, position, size.
+- **Sticker**: see the [Sticker](#sticker) section below.
 
-Tọa độ overlay lưu dạng chuẩn hoá 0..1 nên đúng khi xuất ở bất kỳ kích thước nào.
+Overlay coordinates are stored as normalized 0..1 values, so they render correctly at any export size.
 
 ## Sticker
 
-Gắn sticker (ảnh) lên khung 9:16. Thư viện sticker nằm ở `data/stickers/`.
+Attach image stickers to the 9:16 canvas. The sticker library lives in `data/stickers/`.
 
-- **Tải từ file** — nút "⬆ Tải sticker từ file" nhận PNG / JPG / WEBP / GIF / BMP / AVIF / APNG, hoặc video ngắn (MP4 / WEBM / MOV). Nhiều file cùng lúc.
-- **Nhập từ máy** — dán đường dẫn tuyệt đối tới file sticker.
-- **Thêm lên khung** — bấm vào sticker trong thư viện để đặt lên canvas. Kéo trực tiếp trên preview để di chuyển; kéo góc dưới bên phải để đổi kích thước.
+- **Upload from file** — the "⬆ Tải sticker từ file" (upload sticker from file) button accepts PNG / JPG / WEBP / GIF / BMP / AVIF / APNG, or short videos (MP4 / WEBM / MOV). Multiple files at once.
+- **Import from disk** — paste an absolute path to a sticker file.
+- **Add to canvas** — click a sticker in the library to place it on the canvas. Drag directly on the preview to move it; drag the bottom-right corner to resize.
 
-Mỗi sticker có thể chỉnh:
+Each sticker can be adjusted:
 
-| Tuỳ chọn | Mặc định | Ghi chú |
+| Option | Default | Notes |
 |---|---|---|
-| **X / Y** | 0.5 | Toạ độ chuẩn hoá 0..1 (tâm sticker) |
-| **Rộng (% khung)** | 30% | Chiều cao giữ nguyên tỉ lệ ảnh |
-| **Xoay (°)** | 0 | -180 → 180 |
-| **Độ đục** | 100% | 0–100% |
-| **Bắt đầu / Kết thúc (s)** | 0 / hết clip | Khoảng thời gian hiển thị, tính theo thời lượng output |
-| **Mờ dần vào / ra (s)** | 0 | Fade alpha tại đầu / cuối khoảng thời gian |
+| **X / Y** | 0.5 | Normalized 0..1 coordinates (sticker center) |
+| **Rộng (% khung)** (width, % of frame) | 30% | Height follows the image aspect ratio |
+| **Xoay (°)** (rotation) | 0 | -180 → 180 |
+| **Độ đục** (opacity) | 100% | 0–100% |
+| **Bắt đầu / Kết thúc (s)** (start / end) | 0 / end of clip | Visibility window, relative to output duration |
+| **Mờ dần vào / ra (s)** (fade in / out) | 0 | Alpha fade at the start / end of the window |
 
-Sticker tĩnh được dùng ở dạng ảnh có alpha (PNG nền trong suốt cho kết quả tốt nhất). Sticker vẽ phía trên chữ và khung che.
+Static stickers are used as alpha images (transparent PNG gives the best result). Stickers are drawn above text and cover boxes.
 
-### GIF / APNG / WEBP động
+### Animated GIF / APNG / WEBP
 
-Ảnh động được nhận diện **theo nội dung file, không theo đuôi file** (cờ `animated`, kèm `frames` / `fps` / `duration`), rồi chạy đúng trong cả preview lẫn video xuất ra:
+Animated images are detected **by file content, not by file extension** (an `animated` flag, along with `frames` / `fps` / `duration`), and they play correctly in both the preview and the exported video:
 
-- **Preview**: canvas chỉ vẽ được frame đầu của GIF, nên backend tách sticker động thành một *sprite sheet* PNG (`data/cache/sticker_sheets/`) và frontend phát lại các ô theo đồng hồ thời gian. Sticker vẫn chạy khi video đang tạm dừng.
-- **Xuất video**: mọi sticker đều được nạp bằng `-stream_loop -1`. Ảnh tĩnh (không phải container) nhận thêm `-framerate` để không bị stutter; sau đó `scale`, `rotate`, `fade`, `overlay` áp như bình thường, nên animation lặp suốt clip và vẫn giữ nền trong suốt.
-- Thẻ sticker động có nhãn **ĐỘNG** trong thư viện và trên danh sách sticker đã đặt.
+- **Preview**: a canvas can only draw the first frame of a GIF, so the backend splits animated stickers into a PNG *sprite sheet* (`data/cache/sticker_sheets/`) and the frontend plays back the cells on a time clock. Stickers keep animating while the video is paused.
+- **Export**: every sticker is loaded with `-stream_loop -1`. Static images (not a container) additionally get `-framerate` to avoid stutter; then `scale`, `rotate`, `fade`, `overlay` apply as usual, so the animation loops for the whole clip and transparency is preserved.
+- Animated stickers are tagged **ĐỘNG** (animated) in the library and in the list of placed stickers.
 
-Nhận diện theo nội dung là bắt buộc: APNG thường được lưu với đuôi `.png`, và nếu bị coi là ảnh tĩnh thì ffmpeg từ chối thẳng file đó (`-loop` không phải option của demuxer image2), khiến sticker biến mất khỏi video xuất ra. Ngược lại một `.webp`/`.gif` hoàn toàn có thể là ảnh tĩnh.
+Content-based detection is mandatory: APNGs are often saved with a `.png` extension, and treating one as a static image makes ffmpeg reject the file outright (`-loop` is not an option of the image2 demuxer), which makes the sticker vanish from the exported video. Conversely, a `.webp`/`.gif` can very well be a static image.
 
-Video container (MP4/WEBM/MOV/AVIF) dùng làm sticker cũng được loop bằng `-stream_loop -1` nhưng không tạo sprite sheet — chúng chỉ hiển thị frame đầu trong preview, còn bản xuất vẫn đầy đủ chuyển động.
+Video containers (MP4/WEBM/MOV/AVIF) used as stickers are also looped with `-stream_loop -1` but do not get a sprite sheet — they only show their first frame in the preview, while the export keeps full motion.
 
 ## API
 
-| Method | Endpoint | Mô tả |
+| Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/videos` | Danh sách video trong thư viện |
-| `POST` | `/api/videos/upload` | Upload file (multipart `file`) |
-| `POST` | `/api/videos/import?path=...` | Import từ đường dẫn máy |
-| `GET` | `/api/videos/{id}/stream` | Stream video (hỗ trợ seek) |
-| `DELETE` | `/api/videos/{id}` | Xoá video |
-| `POST` | `/api/render` | Tạo job render 9:16 |
-| `GET` | `/api/jobs/{id}` | Trạng thái + tiến độ job |
-| `GET` | `/api/files/{name}` | File tĩnh (output, preview, poster) |
-| `GET` | `/api/storage/{input\|output}` | Đếm số tệp trong `data/videos` hoặc `data/outputs` |
-| `DELETE` | `/api/storage/{input\|output}` | Xoá toàn bộ tệp trong thư mục đó, trả về `deleted` / `failed` (409 nếu đang có job xuất) |
-| `GET` | `/api/stickers` | Danh sách sticker trong thư viện (kèm kích thước, cờ `animated`, `frames`/`fps`/`duration`, sprite sheet nếu là ảnh động) |
-| `POST` | `/api/stickers/upload` | Upload sticker (multipart `file`) |
-| `POST` | `/api/stickers/import?path=...` | Import sticker từ đường dẫn máy |
-| `GET` | `/api/stickers/{name}` | Trả về file sticker |
-| `GET` | `/api/sticker-sheets/{name}` | Sprite sheet PNG dùng để phát lại ảnh động trong preview |
-| `DELETE` | `/api/stickers/{name}` | Xoá sticker khỏi thư viện |
+| `GET` | `/api/videos` | List videos in the library |
+| `POST` | `/api/videos/upload` | Upload a file (multipart `file`) |
+| `POST` | `/api/videos/import?path=...` | Import from a local path |
+| `GET` | `/api/videos/{id}` | Video metadata |
+| `GET` | `/api/videos/{id}/stream` | Stream a video (supports seeking) |
+| `DELETE` | `/api/videos/{id}` | Delete a video |
+| `POST` | `/api/render` | Create a 9:16 render job |
+| `GET` | `/api/jobs/{id}` | Job status + progress |
+| `GET` | `/api/files/{name}` | Static files (output, preview, poster) |
+| `GET` | `/api/storage/{input\|output}` | Count files in `data/videos` or `data/outputs` |
+| `DELETE` | `/api/storage/{input\|output}` | Delete every file in that folder, returns `deleted` / `failed` (409 if a render job is running) |
+| `GET` | `/api/fonts` | Available fonts |
+| `GET` | `/api/stickers` | List stickers in the library (with size, `animated` flag, `frames`/`fps`/`duration`, and a sprite sheet for animated images) |
+| `POST` | `/api/stickers/upload` | Upload a sticker (multipart `file`) |
+| `POST` | `/api/stickers/import?path=...` | Import a sticker from a local path |
+| `GET` | `/api/stickers/{name}` | Serve a sticker file |
+| `GET` | `/api/sticker-sheets/{name}` | Sprite sheet PNG used to play animated stickers in the preview |
+| `DELETE` | `/api/stickers/{name}` | Delete a sticker from the library |
 
-## Cấu trúc
+## Structure
 
 ```
 backend/
-  main.py      FastAPI app + REST endpoints
-  render.py    Dựng filter graph ffmpeg (fill 9:16, drawtext, drawbox, sticker overlay)
-  stickers.py  Thư viện sticker: liệt kê, probe, upload
-  jobs.py      Job render nền, theo dõi tiến độ
-  ffmpeg_utils.py  ffprobe, poster, resolve font
-  settings.py  Đường dẫn data, tìm ffmpeg/ffprobe
-  schemas.py   Pydantic models
+  main.py          FastAPI app + REST endpoints
+  render.py        Builds the ffmpeg filter graph (9:16 fill, drawtext, drawbox, sticker overlay)
+  stickers.py      Sticker library: listing, probing, uploads
+  jobs.py          Background render jobs, progress tracking
+  ffmpeg_utils.py  ffprobe, poster, font resolution
+  settings.py      Data paths, ffmpeg/ffprobe discovery
+  schemas.py       Pydantic models
 web/
-  index.html   3 panel: chọn video / cắt / editor
-  app.js       Logic UI, preview canvas, gọi API
+  index.html       Three panels: pick video / trim / editor
+  app.js           UI logic, preview canvas, API calls
   style.css
 data/
-  videos/      Video nguồn
-  stickers/    Sticker (PNG/GIF/WEBP…) dùng để gắn lên video
-  outputs/     Video đã xuất + preview jpg
-  cache/       Poster thumbnail
+  videos/          Source videos
+  stickers/        Stickers (PNG/GIF/WEBP…) used on videos
+  outputs/         Rendered videos + preview jpg
+  cache/           Poster thumbnails + sticker_sheets/ (animated sticker sprite sheets)
+  tmp/             Temporary render files
+scripts/
+  verify_flip_crop.py   Flip + crop verification
+  verify_render.py      Render matrix check
+  verify_stickers.py    Sticker position / timing / fade / animation checks
 ```
 
-## Tuỳ chọn môi trường
+## Environment options
 
-| Biến | Mặc định | Ý nghĩa |
+| Variable | Default | Meaning |
 |---|---|---|
 | `AUTOCUT_HOST` | `127.0.0.1` | Host |
 | `AUTOCUT_PORT` | `8787` | Port |
-| `AUTOCUT_DATA_DIR` | `./data` | Thư mục dữ liệu |
+| `AUTOCUT_DATA_DIR` | `./data` | Data directory |
+| `AUTOCUT_PYTHON` | `python3` | Python interpreter used by `run.sh` |
+| `AUTOCUT_API` | `http://127.0.0.1:8787` | Server address used by `scripts/verify_stickers.py` |
 
-## Kiểm tra
+## Verification
 
 ```bash
-# cần server đang chạy ở 127.0.0.1:8787
+# the server must be running at 127.0.0.1:8787
 python3 scripts/verify_flip_crop.py    # flip + crop
-python3 scripts/verify_stickers.py     # vị trí / thời gian / fade, và GIF động thật sự chạy
+python3 scripts/verify_render.py       # flip / crop render matrix (writes /tmp/render_results.json)
+python3 scripts/verify_stickers.py     # position / timing / fade, and that animated GIFs really animate
 ```
 
-`verify_stickers.py` tự upload sticker test (một ảnh tĩnh, một GIF động và một APNG đặt đuôi `.png`), render vài clip ngắn rồi lấy mẫu frame để kiểm tra vị trí, khoảng hiển thị, fade và chuyển động, sau đó xoá các sticker đó đi. Đặt `AUTOCUT_API` nếu server chạy ở địa chỉ khác.
+`verify_flip_crop.py` needs `numpy` and `Pillow`, and uses a hard-coded ffmpeg path at the top of the file — update `FF` if your ffmpeg lives elsewhere.
+
+`verify_stickers.py` uploads its own test stickers (a static image, an animated GIF, and an APNG saved with a `.png` extension), renders a few short clips, then samples frames to check position, visibility window, fade, and motion, and finally deletes those stickers. Set `AUTOCUT_API` if the server runs at a different address.
