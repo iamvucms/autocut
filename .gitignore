@@ -1,0 +1,10 @@
+data/videos/*
+data/outputs/*
+data/cache/*
+data/tmp/*
+data/stickers/*
+!data/**/.gitkeep
+__pycache__/
+*.pyc
+.DS_Store
+.venv/

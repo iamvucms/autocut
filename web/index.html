@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AutoCut — Shorts 9:16</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🎬 AutoCut</div>
+  <nav class="steps">
+    <button class="step active" data-step="1"><span>1</span> Chọn video</button>
+    <button class="step" data-step="2"><span>2</span> Cắt</button>
+    <button class="step" data-step="3"><span>3</span> Fill 9:16 &amp; Overlay</button>
+  </nav>
+  <div class="right">
+    <input id="importPath" class="hidden" type="text" placeholder="/path/to/video.mp4" />
+    <button id="btnImport" class="ghost">Nhập từ máy</button>
+    <button id="btnClearInput" class="ghost danger" title="Xoá toàn bộ tệp trong thư mục videos">Clear input</button>
+    <button id="btnClearOutput" class="ghost danger" title="Xoá toàn bộ tệp trong thư mục outputs">Clear output</button>
+  </div>
+</header>
+
+<main>
+  <!-- ---------------------------------------------------- STEP 1 -->
+  <section id="panel-1" class="panel active">
+    <div class="panel-head">
+      <h2>Chọn video nguồn</h2>
+      <div class="spacer"></div>
+      <span id="uploadStatus" class="upload-status muted" role="status" aria-live="polite"></span>
+      <label class="upload-btn">
+        <input id="fileInput" type="file" accept="video/*" multiple hidden />
+        ⬆ Upload video
+      </label>
+    </div>
+    <div id="dropZone" class="dropzone">
+      <div id="videoGrid" class="grid"></div>
+      <div id="emptyState" class="empty">
+        <p>Chưa có video nào.</p>
+        <p class="muted">Kéo thả video vào đây, bấm Upload, hoặc nhập đường dẫn từ máy.</p>
+      </div>
+      <div class="drop-hint" aria-hidden="true">
+        <div class="drop-hint-box">⬇ Thả video để upload</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------- STEP 2 -->
+  <section id="panel-2" class="panel">
+    <div class="panel-head">
+      <h2>Cắt đoạn video</h2>
+      <div class="spacer"></div>
+      <button id="btnToStep3" class="primary" disabled>Tiếp tục →</button>
+    </div>
+
+    <div class="trim-layout">
+      <div class="trim-player">
+        <video id="trimVideo" controls playsinline></video>
+        <div class="trim-info">
+          <span id="trimMeta"></span>
+        </div>
+      </div>
+
+      <div class="trim-side">
+        <div class="field">
+          <label>Bắt đầu <span class="val" id="startVal">0.00s</span></label>
+          <input id="startRange" type="range" min="0" max="100" step="0.01" value="0" />
+        </div>
+        <div class="field">
+          <label>Kết thúc <span class="val" id="endVal">0.00s</span></label>
+          <input id="endRange" type="range" min="0" max="100" step="0.01" value="100" />
+        </div>
+        <div class="field">
+          <label>Thời lượng <span class="val" id="durVal">0.00s</span></label>
+          <input id="durRange" type="range" min="0" max="100" step="0.01" value="100" />
+        </div>
+        <div class="row">
+          <button id="btnSetStart" class="ghost sm">Đặt điểm bắt đầu</button>
+          <button id="btnSetEnd" class="ghost sm">Đặt điểm kết thúc</button>
+        </div>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="loopPreview" checked /> Preview vòng lặp đoạn đã cắt</label>
+        </div>
+        <div class="hint">Kéo thanh trượt để chọn đoạn. Phím <kbd>←</kbd>/<kbd>→</kbd> dịch chuyển khung hình 0.05s.</div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <canvas id="waveCanvas" height="70"></canvas>
+      <div id="tlSelection" class="tl-selection"></div>
+      <div id="tlStart" class="tl-handle start"></div>
+      <div id="tlEnd" class="tl-handle end"></div>
+      <div id="tlPlayhead" class="tl-playhead"></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------- STEP 3 -->
+  <section id="panel-3" class="panel">
+    <div class="panel-head">
+      <h2>Fill 9:16 &amp; Overlay</h2>
+      <div class="spacer"></div>
+      <button id="btnRender" class="primary">Xuất video</button>
+      <button id="btnDownload" class="ghost hidden">⬇ Tải MP4</button>
+    </div>
+
+    <div class="editor-layout">
+      <div class="preview-col">
+        <div class="phone">
+          <div id="canvasWrap" class="canvas-wrap">
+            <video id="srcVideo" playsinline muted preload="auto"></video>
+            <canvas id="overlayCanvas" width="1080" height="1920"></canvas>
+          </div>
+        </div>
+        <div class="preview-controls">
+          <button id="btnPlay" class="ghost sm">▶ Phát</button>
+          <input id="scrub" type="range" min="0" max="100" step="0.001" value="0" />
+          <span id="scrubTime" class="val">0.00s</span>
+        </div>
+      </div>
+
+      <div class="settings-col">
+        <div class="card">
+          <h3>Nền</h3>
+          <div class="seg" id="fitMode">
+            <button data-mode="blur" class="active">Blur nền</button>
+            <button data-mode="color">Màu</button>
+            <button data-mode="crop">Crop xuyên</button>
+          </div>
+          <div class="field color-field" id="colorField">
+            <label>Màu nền</label>
+            <input id="bgColor" type="color" value="#000000" />
+          </div>
+          <div class="field" id="blurStrengthField">
+            <label>Độ blur <span class="val" id="blurVal">28</span></label>
+            <input id="blurStrength" type="range" min="2" max="80" step="1" value="28" />
+          </div>
+          <div class="field" id="blurZoomField">
+            <label>Zoom nền <span class="val" id="zoomVal">1.25x</span></label>
+            <input id="blurZoom" type="range" min="1" max="2" step="0.01" value="1.25" />
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Nguồn</h3>
+          <label class="check"><input type="checkbox" id="flip" checked /> Lật ngang video (flip)</label>
+          <div class="field" style="margin-top:14px">
+            <label>Âm lượng <span class="val" id="volVal">70%</span></label>
+            <input id="volume" type="range" min="0" max="200" step="5" value="70" />
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label>Tốc độ <span class="val" id="speedVal">1.02x</span></label>
+            <input id="speed" type="range" min="50" max="200" step="1" value="102" />
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label>Độ sáng <span class="val" id="brightVal">0.02</span></label>
+            <input id="brightness" type="range" min="-30" max="30" step="1" value="2" />
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label>Nhiễu nhẹ <span class="val" id="noiseVal">2</span></label>
+            <input id="noise" type="range" min="0" max="20" step="1" value="2" />
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label>Độ nét <span class="val" id="sharpVal">0.30</span></label>
+            <input id="sharpen" type="range" min="0" max="100" step="5" value="30" />
+          </div>
+          <div class="hint">Flip giúp đối chiếu khi nguồn video bị ghi ngược. Tốc độ 0.5x–2x, độ sáng ±0.30, nhiễu 0–20, độ nét 0–1 (CAS, nên giữ dưới 0.5).</div>
+        </div>
+
+        <div class="card">
+          <h3>Crop vùng nguồn</h3>
+          <div class="crop-preview-wrap">
+            <div id="cropBox" class="crop-box">
+              <canvas id="cropCanvas" width="640" height="360"></canvas>
+              <div class="crop-mask top"></div>
+              <div class="crop-mask bottom"></div>
+              <div class="crop-mask left"></div>
+              <div class="crop-mask right"></div>
+              <div class="crop-handle tl"></div>
+              <div class="crop-handle tr"></div>
+              <div class="crop-handle bl"></div>
+              <div class="crop-handle br"></div>
+              <div class="crop-edge t" data-edge="t"></div>
+              <div class="crop-edge b" data-edge="b"></div>
+              <div class="crop-edge l" data-edge="l"></div>
+              <div class="crop-edge r" data-edge="r"></div>
+            </div>
+          </div>
+          <div class="crop-grid">
+            <div class="field">
+              <label>X <span class="val" id="cxVal">0%</span></label>
+              <input id="cropX" type="range" min="0" max="100" step="1" value="0" />
+            </div>
+            <div class="field">
+              <label>Y <span class="val" id="cyVal">0%</span></label>
+              <input id="cropY" type="range" min="0" max="100" step="1" value="0" />
+            </div>
+            <div class="field">
+              <label>Rộng <span class="val" id="cwVal">100%</span></label>
+              <input id="cropW" type="range" min="10" max="100" step="1" value="100" />
+            </div>
+            <div class="field">
+              <label>Cao <span class="val" id="chVal">100%</span></label>
+              <input id="cropH" type="range" min="10" max="100" step="1" value="100" />
+            </div>
+          </div>
+          <div class="row gap">
+            <button id="btnResetCrop" class="ghost sm">Đặt lại crop</button>
+          </div>
+          <div class="hint">Kéo góc khung để chọn vùng cắt khỏi video gốc, trước khi fill 9:16.</div>
+        </div>
+
+        <div class="card">
+          <h3>Overlay / che logo</h3>
+          <div id="overlayList" class="overlay-list"></div>
+          <div class="row gap">
+            <button id="btnAddText" class="ghost sm">+ Chữ</button>
+            <button id="btnAddBox" class="ghost sm">+ Khung che</button>
+          </div>
+          <div class="hint">Kéo thẻ trong khung 9:16 để định vị · kéo tay cầm ↻ để xoay · <kbd>lăn chuột</kbd> để zoom · <kbd>Shift</kbd>+lăn để xoay · <kbd>Alt</kbd>+lăn để đổi độ đục. Bật/tắt bằng mắt thường.</div>
+        </div>
+
+        <div class="card">
+          <h3>Sticker</h3>
+          <div class="sticker-toolbar">
+            <label class="upload-btn sm">
+              <input id="stickerFile" type="file" accept="image/*,image/gif,image/apng,image/webp,video/mp4,video/webm" multiple hidden />
+              ⬆ Tải sticker từ file
+            </label>
+            <button id="btnStickerImport" class="ghost sm">Nhập đường dẫn</button>
+            <span id="stickerStatus" class="upload-status muted" role="status" aria-live="polite"></span>
+          </div>
+          <div id="stickerPicker" class="sticker-picker">
+            <div class="sticker-empty muted">Chưa có sticker. Tải ảnh PNG/GIF/WEBP từ file để dùng.</div>
+          </div>
+          <div id="stickerList" class="overlay-list"></div>
+          <div class="hint">Bấm vào sticker trong thư viện để thêm lên khung. Kéo để di chuyển · kéo góc để đổi cỡ · kéo tay cầm ↻ để xoay · <kbd>lăn chuột</kbd> để zoom · <kbd>Shift</kbd>+lăn để xoay · <kbd>Alt</kbd>+lăn để đổi độ đục. Ảnh PNG/GIF/WEBP/APNG giữ nền trong suốt; GIF/APNG động chạy và lặp lại trong preview lẫn video xuất ra.</div>
+        </div>
+
+        <div class="card">
+          <h3>Xuất</h3>
+          <div class="field">
+            <label>Độ nén (CRF) <span class="val" id="crfVal">18</span></label>
+            <input id="crf" type="range" min="14" max="30" step="1" value="18" />
+          </div>
+          <div class="field">
+            <label>Bitrate video <span class="val" id="bitrateVal">4000 kbps</span></label>
+            <input id="bitrate" type="range" min="0" max="12000" step="250" value="4000" />
+          </div>
+          <label class="check"><input type="checkbox" id="keepAudio" checked /> Giữ âm thanh</label>
+          <div id="renderProgress" class="progress hidden"><div class="bar"></div></div>
+          <div id="renderMsg" class="hint"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ---------------------------------------------------- export progress -->
+<div id="exportOverlay" class="export-overlay hidden">
+  <div class="export-box">
+    <div class="export-ring">
+      <svg viewBox="0 0 120 120">
+        <circle class="ring-bg" cx="60" cy="60" r="52" />
+        <circle id="ringFg" class="ring-fg" cx="60" cy="60" r="52" />
+      </svg>
+      <div class="export-pct"><span id="exportPct">0</span><small>%</small></div>
+    </div>
+    <h3 id="exportTitle">Đang xuất video…</h3>
+    <div class="export-bar"><div id="exportBar" class="bar"></div></div>
+    <div id="exportDetail" class="hint">Đang chuẩn bị</div>
+    <div class="export-actions">
+      <button id="exportDownload" class="primary sm hidden">Tải video</button>
+      <button id="exportClose" class="ghost sm hidden">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

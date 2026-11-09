@@ -1,0 +1,5 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+static-ffmpeg>=2.5
+imageio-ffmpeg>=0.5
